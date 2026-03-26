@@ -1,0 +1,70 @@
+<!--
+  Gentle recovery NavigateToPose tree for differential-drive rover.
+  Turn-to-heading on large heading errors is handled internally by
+  RegulatedPurePursuit (use_rotate_to_heading=true), so no custom
+  TurnFirst BT node is needed here.
+-->
+<root main_tree_to_execute="MainTree" BTCPP_format="4">
+  <BehaviorTree ID="MainTree">
+    <PipelineSequence name="NavigateWithReplanning">
+      <RateController hz="1.0">
+        <RecoveryNode number_of_retries="1" name="ComputePathToPose">
+          <ComputePathToPose
+              goal="{goal}"
+              path="{path}"
+              planner_id="GridBased"
+              server_name="compute_path_to_pose"
+              server_timeout="20"
+              error_code_id="{compute_path_error_code}"/>
+          <Sequence name="PlanFailureRecovery">
+            <WouldAPlannerRecoveryHelp error_code="{compute_path_error_code}"/>
+            <ClearEntireCostmap
+                name="ClearLocalCostmap-OnPlanFailure"
+                service_name="local_costmap/clear_entirely_local_costmap"
+                server_timeout="5"/>
+          </Sequence>
+        </RecoveryNode>
+      </RateController>
+
+      <RecoveryNode number_of_retries="3" name="FollowPath">
+        <FollowPath
+            path="{path}"
+            controller_id="FollowPath"
+            server_name="follow_path"
+            server_timeout="20"
+            error_code_id="{follow_path_error_code}"/>
+        <Sequence name="ControlFailureRecovery">
+          <WouldAControllerRecoveryHelp error_code="{follow_path_error_code}"/>
+          <ClearEntireCostmap
+              name="ClearLocalCostmap-OnControlFailure"
+              service_name="local_costmap/clear_entirely_local_costmap"
+              server_timeout="5"/>
+          <ClearEntireCostmap
+              name="ClearGlobalCostmap-OnControlFailure"
+              service_name="global_costmap/clear_entirely_global_costmap"
+              server_timeout="5"/>
+          <RoundRobin name="FollowPathRecoveryActions">
+            <BackUp
+              backup_dist="0.20"
+              backup_speed="0.15"
+              time_allowance="8.0"
+              server_name="backup"
+              server_timeout="10"/>
+            <Spin
+              spin_dist="1.57"
+              time_allowance="8.0"
+              server_name="spin"
+              server_timeout="10"/>
+            <Wait wait_duration="2" server_name="wait" server_timeout="10"/>
+          </RoundRobin>
+          <ComputePathToPose
+              goal="{goal}"
+              path="{path}"
+              planner_id="GridBased"
+              server_name="compute_path_to_pose"
+              server_timeout="20"/>
+        </Sequence>
+      </RecoveryNode>
+    </PipelineSequence>
+  </BehaviorTree>
+</root>

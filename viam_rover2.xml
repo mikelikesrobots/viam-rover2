@@ -1,0 +1,12 @@
+<library path="viam_rover2">
+  <class name="viam_rover2/Rover2SystemHardware"
+         type="viam_rover2::Rover2SystemHardware"
+         base_class_type="hardware_interface::SystemInterface">
+    <description>
+      ros2_control `SystemInterface` implementation for the Viam Rover 2.
+      Transmits motor commands receives IMU, battery, and encoder data over
+      serial connection from the RP2040 microcontroller, integrated into the
+      Radxa X4 board.
+    </description>
+  </class>
+</library>
